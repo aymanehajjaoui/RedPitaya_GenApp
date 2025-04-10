@@ -1,0 +1,14 @@
+# Ignore object files
+*.o
+
+# Ignore CSV data files
+*.csv
+
+# Optional: backup or temp files
+*~
+
+# Optional: editor/project specific
+.vscode/
+.idea/
+*.swp
+.DS_Store
