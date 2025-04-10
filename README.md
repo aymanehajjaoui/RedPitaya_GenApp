@@ -19,6 +19,7 @@ It features two operation modes:
 ---
 
 ## 🗂️ Project Structure
+``` 
 ├── Source_Code/ 
 │ ├── RedPitaya_GenApp_Online/ # Online version (clones from GitHub) 
 │ │ ├── src/ # Main C++ sources 
@@ -31,7 +32,7 @@ It features two operation modes:
 │ └── Makefile 
 ├── RedPitaya_GenApp_Online/ # Compiled binaries and .o files 
 ├── RedPitaya_GenApp_Offline/ 
-└── README.md
+└── README.md``` 
 
 
 ---
