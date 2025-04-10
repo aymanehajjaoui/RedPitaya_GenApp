@@ -31,8 +31,8 @@ RedPitaya_GenApp/
 │ ├── include/ 
 │ ├── gen_files/ # Locally bundled RedPitaya template 
 │ └── Makefile 
-├── RedPitaya_GenApp_Online/ # Compiled binaries and .o files 
-├── RedPitaya_GenApp_Offline/ 
+├── RedPitaya_GenApp_Online/ # Contain gen_app executable ready to be run
+├── RedPitaya_GenApp_Offline/ # Contain gen_files + gen_app executable ready to be run
 └── README.md
 ``` 
 
