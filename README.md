@@ -26,11 +26,11 @@ RedPitaya_GenApp/
 │ │ ├── src/ # Main C++ sources 
 │ │ ├── include/ # Header files 
 │ │ └── Makefile 
-│ └── RedPitaya_GenApp_Offline/ # Offline version (uses gen_files/) 
-│ ├── src/ 
-│ ├── include/ 
-│ ├── gen_files/ # Locally bundled RedPitaya template 
-│ └── Makefile 
+│ ├── RedPitaya_GenApp_Offline/ # Offline version (uses gen_files/) 
+│ │ ├── src/ 
+│ │ ├── include/ 
+│ │ ├── gen_files/ # Locally bundled RedPitaya template 
+│ │ └── Makefile 
 ├── RedPitaya_GenApp_Online/ # Contain gen_app executable ready to be run
 ├── RedPitaya_GenApp_Offline/ # Contain gen_files + gen_app executable ready to be run
 └── README.md
