@@ -43,9 +43,9 @@ Each version (online and offline) has its own `Makefile`.
 ### 🔧 Build Online Version
 ```bash
 cd Source_Code/RedPitaya_GenApp_Online
-make
+make``` 
 
 ### 🔧 Build Online Version
 ```bash
 cd Source_Code/RedPitaya_GenApp_Offline
-make
+make``` 
