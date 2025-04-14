@@ -12,10 +12,10 @@ namespace fs = std::filesystem;
 
 // Map version name to its Git URL
 const std::unordered_map<std::string, std::string> ExportManager::versionGitLinks = {
-    {"threads_mutex", "https://github.com/aymanehajjaoui/BrainMix_RPCode_Template.git"},
-    {"threads_sem", "https://github.com/aymanehajjaoui/BrainMix_RPCode_Template.git"},
-    {"process_mutex", "https://github.com/aymanehajjaoui/BrainMix_RPCode_Template.git"},
-    {"process_sem", "https://github.com/aymanehajjaoui/BrainMix_RPCode_Template.git"}
+    {"threads_mutex", "https://github.com/aymanehajjaoui/threads_mutex.git"},
+    {"threads_sem", "https://github.com/aymanehajjaoui/threads_sem.git"},
+    {"process_mutex", "https://github.com/aymanehajjaoui/process_mutex.git"},
+    {"process_sem", "https://github.com/aymanehajjaoui/process_sem.git"}
 };
 
 void ExportManager::removeStaticFromModelC(const std::string &versionPath)
