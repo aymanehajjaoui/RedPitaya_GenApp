@@ -23,6 +23,7 @@ class Vue : public Gtk::Window
 private:
     Gtk::Button buttonBrowseModel;
     Gtk::Button buttonExportLocally;
+    Gtk::Button buttonConnectRedPitaya;
     Gtk::Button buttonExportToRedPitaya;
     Gtk::Button buttonHelp;
     Gtk::Button buttonQuit;
@@ -31,10 +32,11 @@ private:
     Gtk::Label createdLabel;
 
     std::string modelFolder;
-    std::string targetFolder;
-    std::string genFilesDir = "./gen_files";
+    std::string redpitayaHost;
+    std::string redpitayaPassword;
 
     bool modelLoaded = false;
+    bool redpitayaConnected = false;
 
 public:
     Vue();
@@ -42,6 +44,7 @@ public:
 
     void onButtonBrowseModel();
     void onExportLocallyClicked();
+    void onConnectRedPitayaClicked();
     void onExportToRedPitayaClicked();
     void onHelpClicked();
     void onQuitClicked();

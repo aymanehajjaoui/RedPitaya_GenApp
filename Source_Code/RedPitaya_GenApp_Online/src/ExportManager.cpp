@@ -2,10 +2,53 @@
 
 #include "ExportManager.hpp"
 #include "SSHManager.hpp"
+#include <fstream>
+#include <regex>
+#include <sstream>
+#include <cstdlib>
+#include <unordered_map>
 
 namespace fs = std::filesystem;
 
-bool ExportManager::exportLocally(const std::string &modelFolder, const std::string & /* genFilesDir */)
+// Map version name to its Git URL
+const std::unordered_map<std::string, std::string> ExportManager::versionGitLinks = {
+    {"threads_mutex", "https://github.com/aymanehajjaoui/BrainMix_RPCode_Template.git"},
+    {"threads_sem", "https://github.com/aymanehajjaoui/BrainMix_RPCode_Template.git"},
+    {"process_mutex", "https://github.com/aymanehajjaoui/BrainMix_RPCode_Template.git"},
+    {"process_sem", "https://github.com/aymanehajjaoui/BrainMix_RPCode_Template.git"}
+};
+
+void ExportManager::removeStaticFromModelC(const std::string &versionPath)
+{
+    fs::path modelCPath = fs::path(versionPath) / "model.c";
+    if (!fs::exists(modelCPath))
+        return;
+
+    std::ifstream in(modelCPath);
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    in.close();
+
+    std::string content = buffer.str();
+    std::regex staticRegex(R"(\bstatic\b\s*)");
+    std::string modified = std::regex_replace(content, staticRegex, "");
+
+    std::ofstream out(modelCPath);
+    out << modified;
+    out.close();
+}
+
+bool ExportManager::cloneVersionFromGit(const std::string &version, const std::string &destination)
+{
+    auto it = versionGitLinks.find(version);
+    if (it == versionGitLinks.end())
+        return false;
+
+    std::string command = "git clone --depth=1 " + it->second + " " + destination + " > /dev/null 2>&1";
+    return std::system(command.c_str()) == 0;
+}
+
+bool ExportManager::exportLocally(const std::string &modelFolder, const std::vector<std::string> &versions)
 {
     Gtk::FileChooserDialog dialog("Choose the target folder", Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
     dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
@@ -24,129 +67,85 @@ bool ExportManager::exportLocally(const std::string &modelFolder, const std::str
         return false;
     }
 
-    const std::string tempClonePath = "/tmp/brainmix_temp";
-
     try
     {
-        // Clean up temp dir if it exists
-        if (fs::exists(tempClonePath))
+        for (const auto &version : versions)
         {
-            fs::remove_all(tempClonePath);
+            fs::path versionDstPath = fs::path(targetFolder) / version;
+
+            // Clone repo
+            if (!cloneVersionFromGit(version, versionDstPath.string()))
+            {
+                Gtk::MessageDialog errorDialog(dialog, "Failed to clone version: " + version, false, Gtk::MESSAGE_ERROR);
+                errorDialog.run();
+                return false;
+            }
+
+            // Copy model
+            fs::copy(modelFolder, versionDstPath / "model", fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+
+            if (version == "threads_mutex" || version == "threads_sem")
+            {
+                removeStaticFromModelC((versionDstPath / "model").string());
+            }
         }
 
-        // Clone the repo into the temp directory
-        std::string cloneCmd = "git clone https://github.com/aymanehajjaoui/BrainMix_RPCode_Template.git " + tempClonePath;
-        int result = std::system(cloneCmd.c_str());
-
-        if (result != 0)
-        {
-            Gtk::MessageDialog errorDialog(dialog, "Git clone failed.", false, Gtk::MESSAGE_ERROR);
-            errorDialog.run();
-            return false;
-        }
-
-        fs::remove_all(fs::path(tempClonePath) / ".git");
-        fs::remove(fs::path(tempClonePath) / ".gitignore");
-
-        // Ensure the target folder exists
-        if (!fs::exists(targetFolder))
-        {
-            fs::create_directories(targetFolder);
-        }
-
-        // Copy repo contents into target folder
-        for (const auto &entry : fs::directory_iterator(tempClonePath))
-        {
-            fs::copy(entry.path(), fs::path(targetFolder) / entry.path().filename(), fs::copy_options::recursive | fs::copy_options::overwrite_existing);
-        }
-
-        // Copy model folder
-        fs::copy(modelFolder, fs::path(targetFolder) / "model", fs::copy_options::recursive | fs::copy_options::overwrite_existing);
-
-        // Cleanup
-        fs::remove_all(tempClonePath);
-
-        Gtk::MessageDialog successDialog(dialog, "Model and template exported successfully!", false, Gtk::MESSAGE_INFO);
+        Gtk::MessageDialog successDialog(dialog, "Selected versions exported successfully!", false, Gtk::MESSAGE_INFO);
         successDialog.run();
         return true;
     }
     catch (const std::exception &e)
     {
-        Gtk::MessageDialog errorDialog(dialog, std::string("Error during export: ") + e.what(), false, Gtk::MESSAGE_ERROR);
+        Gtk::MessageDialog errorDialog(dialog, std::string("Error: ") + e.what(), false, Gtk::MESSAGE_ERROR);
         errorDialog.run();
         return false;
     }
 }
 
-bool ExportManager::exportToRedPitaya(const std::string &modelFolder, const std::string & /* genFilesDir */, const std::string &hostname, const std::string &password, const std::string &targetDirectory)
+bool ExportManager::exportToRedPitaya(const std::string &modelFolder, const std::vector<std::string> &versions,
+                                      const std::string &hostname, const std::string &password, const std::string &targetDirectory)
 {
-    const std::string tempClonePath = "/tmp/brainmix_temp";
-
-    try
-    {
-        // Clone repo into temp directory
-        if (fs::exists(tempClonePath))
-        {
-            fs::remove_all(tempClonePath);
-        }
-
-        std::string cloneCmd = "git clone https://github.com/aymanehajjaoui/BrainMix_RPCode_Template.git " + tempClonePath;
-        int result = std::system(cloneCmd.c_str());
-
-        if (result != 0)
-        {
-            std::cerr << "Git clone failed.\n";
-            return false;
-        }
-
-        // Remove Git metadata
-        fs::remove_all(fs::path(tempClonePath) / ".git");
-        fs::remove(fs::path(tempClonePath) / ".gitignore");
-
-        // Create target directory on RedPitaya
-        if (!SSHManager::create_remote_directory(hostname, password, targetDirectory))
-        {
-            return false;
-        }
-
-        // Transfer cloned files to RedPitaya
-        for (const auto &entry : fs::directory_iterator(tempClonePath))
-        {
-            std::string targetPath = targetDirectory + "/" + entry.path().filename().string();
-            if (fs::is_regular_file(entry))
-            {
-                if (!SSHManager::scp_transfer(hostname, password, entry.path().string(), targetPath))
-                    return false;
-            }
-            else if (fs::is_directory(entry))
-            {
-                if (!SSHManager::create_remote_directory(hostname, password, targetPath))
-                    return false;
-
-                for (const auto &subEntry : fs::directory_iterator(entry))
-                {
-                    std::string subTarget = targetPath + "/" + subEntry.path().filename().string();
-                    if (!SSHManager::scp_transfer(hostname, password, subEntry.path().string(), subTarget))
-                        return false;
-                }
-            }
-        }
-
-        // Transfer the model folder
-        std::string modelTargetPath = targetDirectory + "/model";
-        if (!SSHManager::scp_transfer(hostname, password, modelFolder, modelTargetPath))
-        {
-            return false;
-        }
-
-        // Clean up local temp directory
-        fs::remove_all(tempClonePath);
-
-        return true;
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "Error during export to RedPitaya: " << e.what() << std::endl;
+    if (!SSHManager::create_remote_directory(hostname, password, targetDirectory))
         return false;
+
+    for (const auto &version : versions)
+    {
+        std::string remoteVersionDir = targetDirectory + "/" + version;
+        if (!SSHManager::create_remote_directory(hostname, password, remoteVersionDir))
+            return false;
+
+        std::string remoteModelDir = remoteVersionDir + "/model";
+        std::string tempModelDir = "/tmp/export_temp_model_" + version;
+        std::string tempCodeDir = "/tmp/export_code_" + version;
+
+        fs::remove_all(tempModelDir);
+        fs::remove_all(tempCodeDir);
+        fs::create_directories(tempModelDir);
+
+        // Copy model
+        fs::copy(modelFolder, tempModelDir, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+
+        // Remove "static" if needed
+        if (version == "threads_mutex" || version == "threads_sem")
+        {
+            removeStaticFromModelC(tempModelDir);
+        }
+
+        // Clone the version repo
+        if (!cloneVersionFromGit(version, tempCodeDir))
+            return false;
+
+        // Transfer model + code
+        if (!SSHManager::scp_transfer(hostname, password, tempModelDir, remoteModelDir))
+            return false;
+
+        for (const auto &file : fs::directory_iterator(tempCodeDir))
+        {
+            std::string remoteFilePath = remoteVersionDir + "/" + file.path().filename().string();
+            if (!SSHManager::scp_transfer(hostname, password, file.path().string(), remoteFilePath))
+                return false;
+        }
     }
+
+    return true;
 }

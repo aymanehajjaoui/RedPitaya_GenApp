@@ -5,7 +5,29 @@
 
 namespace fs = std::filesystem;
 
-bool ExportManager::exportLocally(const std::string &modelFolder, const std::string &genFilesDir)
+void ExportManager::removeStaticFromModelC(const std::string &versionPath)
+{
+    fs::path modelCPath = fs::path(versionPath) / "model.c";
+    if (!fs::exists(modelCPath))
+        return;
+
+    std::ifstream in(modelCPath);
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    in.close();
+
+    std::string content = buffer.str();
+
+    // Remove all 'static' keywords cleanly
+    std::regex staticRegex(R"(\bstatic\b\s*)");
+    std::string modified = std::regex_replace(content, staticRegex, "");
+
+    std::ofstream out(modelCPath);
+    out << modified;
+    out.close();
+}
+
+bool ExportManager::exportLocally(const std::string &modelFolder, const std::string &genFilesDir, const std::vector<std::string> &versions)
 {
     Gtk::FileChooserDialog dialog("Choose the target folder", Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
     dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
@@ -31,14 +53,22 @@ bool ExportManager::exportLocally(const std::string &modelFolder, const std::str
             fs::create_directories(targetFolder);
         }
 
-        fs::copy(modelFolder, fs::path(targetFolder) / "model", fs::copy_options::recursive);
-        
-        for (const auto &entry : fs::directory_iterator(genFilesDir))
+        for (const auto &version : versions)
         {
-            fs::copy(entry.path(), targetFolder / entry.path().filename(), fs::copy_options::recursive);
+            fs::path versionDstPath = fs::path(targetFolder) / version;
+            fs::path versionSrcPath = fs::path(genFilesDir) / version;
+
+            fs::create_directories(versionDstPath);
+            fs::copy(versionSrcPath, versionDstPath, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+            fs::copy(modelFolder, versionDstPath / "model", fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+
+            if (version == "threads_mutex" || version == "threads_sem")
+            {
+                removeStaticFromModelC((versionDstPath / "model").string());
+            }
         }
 
-        Gtk::MessageDialog successDialog(dialog, "Model exported successfully!", false, Gtk::MESSAGE_INFO);
+        Gtk::MessageDialog successDialog(dialog, "Selected versions exported successfully!", false, Gtk::MESSAGE_INFO);
         successDialog.run();
         return true;
     }
@@ -50,47 +80,49 @@ bool ExportManager::exportLocally(const std::string &modelFolder, const std::str
     }
 }
 
-bool ExportManager::exportToRedPitaya(const std::string &modelFolder, const std::string &genFilesDir, const std::string &hostname, const std::string &password, const std::string &targetDirectory)
+bool ExportManager::exportToRedPitaya(const std::string &modelFolder, const std::string &genFilesDir, const std::vector<std::string> &versions,
+                                      const std::string &hostname, const std::string &password, const std::string &targetDirectory)
 {
-    bool dirCreated = SSHManager::create_remote_directory(hostname, password, targetDirectory);
-    if (!dirCreated)
-    {
+    if (!SSHManager::create_remote_directory(hostname, password, targetDirectory))
         return false;
-    }
 
-    std::string targetPath = targetDirectory + "/model";
-    bool scpSuccess = SSHManager::scp_transfer(hostname, password, modelFolder, targetPath);
-    if (!scpSuccess)
+    for (const auto &version : versions)
     {
-        return false;
-    }
+        fs::path src = fs::path(genFilesDir) / version;
+        std::string remoteVersionDir = targetDirectory + "/" + version;
 
-    for (const auto &entry : fs::directory_iterator(genFilesDir))
-    {
-        std::string targetFilePath = targetDirectory + "/" + entry.path().filename().string();
-        if (fs::is_regular_file(entry))
+        if (!SSHManager::create_remote_directory(hostname, password, remoteVersionDir))
+            return false;
+
+        std::string remoteModelDir = remoteVersionDir + "/model";
+        std::string tempModelDir = "/tmp/export_temp_model";
+
+        // Clean/create temporary copy of model directory
+        fs::remove_all(tempModelDir);
+        fs::create_directories(tempModelDir);
+        fs::copy(modelFolder, tempModelDir, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+
+        if (version == "threads_mutex" || version == "threads_sem")
         {
-            if (!SSHManager::scp_transfer(hostname, password, entry.path().string(), targetFilePath))
+            removeStaticFromModelC(tempModelDir);
+        }
+
+        if (!SSHManager::scp_transfer(hostname, password, tempModelDir, remoteModelDir))
+            return false;
+
+        if (fs::is_directory(src))
+        {
+            for (const auto &file : fs::directory_iterator(src))
             {
-                return false;
+                std::string remoteFilePath = remoteVersionDir + "/" + file.path().filename().string();
+                if (!SSHManager::scp_transfer(hostname, password, file.path().string(), remoteFilePath))
+                    return false;
             }
         }
-        else if (fs::is_directory(entry))
+        else if (fs::is_regular_file(src))
         {
-            std::string targetDirPath = targetDirectory + "/" + entry.path().filename().string();
-            if (!SSHManager::create_remote_directory(hostname, password, targetDirPath))
-            {
+            if (!SSHManager::scp_transfer(hostname, password, src.string(), remoteVersionDir))
                 return false;
-            }
-
-            for (const auto &subEntry : fs::directory_iterator(entry))
-            {
-                std::string targetSubFilePath = targetDirPath + "/" + subEntry.path().filename().string();
-                if (!SSHManager::scp_transfer(hostname, password, subEntry.path().string(), targetSubFilePath))
-                {
-                    return false;
-                }
-            }
         }
     }
 

@@ -2,6 +2,7 @@
 
 #include "ConnectionManager.hpp"
 #include "SSHManager.hpp"
+#include <cstdlib>
 
 bool ConnectionManager::connectToRedPitaya(Gtk::Dialog &dialog, Gtk::Button &buttonConnect, Gtk::Entry &entryMac, Gtk::Entry &entryIP, Gtk::Entry &entryPassword, Gtk::Entry &entryDirectory)
 {
@@ -55,4 +56,29 @@ bool ConnectionManager::connectToRedPitaya(Gtk::Dialog &dialog, Gtk::Button &but
         errorDialog.run();
         return false;
     }
+}
+
+bool ConnectionManager::pingHost(const std::string &hostname)
+{
+    std::string command = "ping -c 1 -W 2 " + hostname + " > /dev/null 2>&1";
+    int result = std::system(command.c_str());
+    return result == 0;
+}
+
+bool ConnectionManager::isSSHConnectionAlive(const std::string &hostname, const std::string &password)
+{
+    std::string userHost;
+
+    // If it's a MAC-based hostname (contains "rp-" and ends with .local)
+    if (hostname.find("rp-") == 0 && hostname.find(".local") != std::string::npos)
+    {
+        userHost = "root@" + hostname;
+    }
+    else
+    {
+        userHost = "root@" + hostname; // IP-based or direct hostname
+    }
+
+    std::string cmd = "sshpass -p \"" + password + "\" ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no " + userHost + " 'echo ok' > /dev/null 2>&1";
+    return std::system(cmd.c_str()) == 0;
 }
