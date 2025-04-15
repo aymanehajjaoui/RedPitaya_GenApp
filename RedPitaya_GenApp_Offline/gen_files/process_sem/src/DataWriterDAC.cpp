@@ -1,11 +1,7 @@
-/* DataWriter.cpp */
+/* DataWriterDAC.cpp */
 
 #include "DataWriterDAC.hpp"
 #include <iostream>
-#include <fstream>
-#include <thread>
-#include <chrono>
-#include <type_traits>
 
 void write_data_dac(Channel &channel, rp_channel_t rp_channel)
 {
@@ -16,11 +12,10 @@ void write_data_dac(Channel &channel, rp_channel_t rp_channel)
             if (sem_wait(&channel.data_sem_dac) != 0)
             {
                 if (errno == EINTR && stop_program.load())
-                    break; // Handle interruption or stop signal
+                    break;
                 continue;
             }
 
-            // Exit if the program is stopping and the queue is empty
             if (stop_program.load() && channel.data_queue_dac.empty())
                 break;
 
@@ -39,7 +34,6 @@ void write_data_dac(Channel &channel, rp_channel_t rp_channel)
                 channel.counters->write_count_dac.fetch_add(1, std::memory_order_relaxed);
             }
 
-            // Final break condition
             if (channel.acquisition_done && channel.data_queue_dac.empty())
                 break;
         }
@@ -51,4 +45,3 @@ void write_data_dac(Channel &channel, rp_channel_t rp_channel)
         std::cerr << "Exception in write_data_dac for channel " << static_cast<int>(channel.channel_id) + 1 << ": " << e.what() << std::endl;
     }
 }
-

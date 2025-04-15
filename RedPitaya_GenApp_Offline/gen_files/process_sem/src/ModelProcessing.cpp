@@ -2,7 +2,6 @@
 
 #include "ModelProcessing.hpp"
 #include <iostream>
-#include <thread>
 #include <chrono>
 #include <type_traits>
 
@@ -105,7 +104,6 @@ void model_inference(Channel &channel)
         std::cerr << "Exception in model_inference: " << e.what() << std::endl;
     }
 }
-
 
 void model_inference_mod(Channel &channel)
 {

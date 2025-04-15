@@ -1,17 +1,15 @@
 /*SystemUtils.cpp*/
 
 #include "SystemUtils.hpp"
-#include "Common.hpp"
 #include <iostream>
-#include <sys/statvfs.h>
 #include <csignal>
-#include <thread>
 #include <iomanip>
 #include <filesystem>
+#include <sys/statvfs.h>
+#include <pthread.h>
 
 volatile std::sig_atomic_t interrupted = 0;
 
-// Function to check if disk space is below a certain threshold
 bool is_disk_space_below_threshold(const char *path, double threshold)
 {
     struct statvfs stat;
@@ -38,7 +36,6 @@ bool set_thread_priority(std::thread &th, int priority)
     return true;
 }
 
-// Function to set thread affinity to a specific core
 bool set_thread_affinity(std::thread &th, int core_id)
 {
     cpu_set_t cpuset;
@@ -51,7 +48,6 @@ bool set_thread_affinity(std::thread &th, int core_id)
     return true;
 }
 
-// Signal handler for graceful shutdown
 void signal_handler(int sig)
 {
     if (sig == SIGINT)
@@ -62,20 +58,18 @@ void signal_handler(int sig)
         stop_program.store(true);
         stop_acquisition.store(true);
 
-        // Force std::cin to fail if blocked
         std::cin.setstate(std::ios::failbit);
         sem_post(&channel1.data_sem_csv);
         sem_post(&channel1.data_sem_dac);
         sem_post(&channel1.model_sem);
         sem_post(&channel1.result_sem_csv);
         sem_post(&channel1.result_sem_dac);
-    
+
         sem_post(&channel2.data_sem_csv);
         sem_post(&channel2.data_sem_dac);
         sem_post(&channel2.model_sem);
         sem_post(&channel2.result_sem_csv);
         sem_post(&channel2.result_sem_dac);
-
     }
 }
 
@@ -130,7 +124,6 @@ void print_channel_stats(const Channel &channel)
     std::cout << "\n====================================\n";
 }
 
-// Function to manage output folders containing .csv data
 void folder_manager(const std::string &folder_path)
 {
     namespace fs = std::filesystem;
@@ -141,7 +134,6 @@ void folder_manager(const std::string &folder_path)
 
         if (fs::exists(dir_path))
         {
-            // Folder exists - clear its contents
             for (const auto &entry : fs::directory_iterator(dir_path))
             {
                 try
@@ -156,7 +148,6 @@ void folder_manager(const std::string &folder_path)
         }
         else
         {
-            // Folder doesn't exist - create it
             if (!fs::create_directories(dir_path))
             {
                 std::cerr << "Failed to create directory: " << folder_path << std::endl;
@@ -173,10 +164,10 @@ bool ask_user_preferences(bool &save_data_csv, bool &save_data_dac, bool &save_o
 {
     int max_attempts = 3;
 
-    // Step 1: Ask if the user wants to save acquired data
     for (int attempt = 1; attempt <= max_attempts; ++attempt)
     {
-        if (interrupted) return false;
+        if (interrupted)
+            return false;
 
         int save_choice;
         std::cout << "Do you want to save acquired data?\n"
@@ -207,10 +198,10 @@ bool ask_user_preferences(bool &save_data_csv, bool &save_data_dac, bool &save_o
         }
     }
 
-    // Step 2: Ask what to do with model output
     for (int attempt = 1; attempt <= max_attempts; ++attempt)
     {
-        if (interrupted) return false;
+        if (interrupted)
+            return false;
 
         int output_option;
         std::cout << "\nChoose what to do with model output:\n"
@@ -231,7 +222,6 @@ bool ask_user_preferences(bool &save_data_csv, bool &save_data_dac, bool &save_o
         {
             save_output_csv = (output_option == 1 || output_option == 3);
 
-            // Check for DAC conflict
             if (save_data_dac && (output_option == 2 || output_option == 3))
             {
                 save_output_dac = false;

@@ -1,9 +1,8 @@
-/*modelWriterDAC.cpp*/
+/*ModelWriterDAC.cpp*/
 
 #include "ModelWriterDAC.hpp"
 #include <iostream>
-#include <thread>
-#include <chrono>
+#include <mutex>
 #include <type_traits>
 
 void log_results_dac(Channel &channel, rp_channel_t rp_channel)
@@ -15,7 +14,7 @@ void log_results_dac(Channel &channel, rp_channel_t rp_channel)
             if (sem_wait(&channel.result_sem_dac) != 0)
             {
                 if (errno == EINTR && stop_program.load())
-                    break; // Interrupted by signal
+                    break;
                 continue;
             }
 
@@ -24,11 +23,11 @@ void log_results_dac(Channel &channel, rp_channel_t rp_channel)
 
             while (!channel.result_buffer_dac.empty())
             {
-                const model_result_t &result = channel.result_buffer_dac.front();  // peek
+                const model_result_t &result = channel.result_buffer_dac.front();
                 float voltage = OutputToVoltage(result.output[0]);
                 voltage = std::clamp(voltage, -1.0f, 1.0f);
                 rp_GenAmp(rp_channel, voltage);
-                channel.result_buffer_dac.pop_front();  // remove
+                channel.result_buffer_dac.pop_front();
                 channel.log_count_dac.fetch_add(1, std::memory_order_relaxed);
             }
 

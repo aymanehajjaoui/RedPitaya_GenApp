@@ -17,8 +17,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <atomic>
-#include <thread>
+#include <semaphore.h>
 
 #include "rp.h"
 #include "../model/include/model.h"
@@ -35,7 +34,6 @@
 #define log_dac_priority 1
 #define SHM_COUNTERS "/channel_counters"
 
-// Global flags
 extern bool save_data_csv;
 extern bool save_data_dac;
 extern bool save_output_csv;

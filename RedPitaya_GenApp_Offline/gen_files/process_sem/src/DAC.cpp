@@ -1,10 +1,6 @@
 /*DAC.cpp*/
 
 #include "DAC.hpp"
-#include "rp.h"
-#include <cmath>
-#include <iostream>
-#include <type_traits>
 
 void initialize_DAC()
 {
