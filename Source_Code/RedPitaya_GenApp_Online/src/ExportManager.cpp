@@ -15,8 +15,7 @@ const std::unordered_map<std::string, std::string> ExportManager::versionGitLink
     {"threads_mutex", "https://github.com/aymanehajjaoui/threads_mutex.git"},
     {"threads_sem", "https://github.com/aymanehajjaoui/threads_sem.git"},
     {"process_mutex", "https://github.com/aymanehajjaoui/process_mutex.git"},
-    {"process_sem", "https://github.com/aymanehajjaoui/process_sem.git"}
-};
+    {"process_sem", "https://github.com/aymanehajjaoui/process_sem.git"}};
 
 void ExportManager::removeStaticFromModelC(const std::string &versionPath)
 {
@@ -45,7 +44,13 @@ bool ExportManager::cloneVersionFromGit(const std::string &version, const std::s
         return false;
 
     std::string command = "git clone --depth=1 " + it->second + " " + destination + " > /dev/null 2>&1";
-    return std::system(command.c_str()) == 0;
+    if (std::system(command.c_str()) != 0)
+        return false;
+
+    // Remove .git folder to clean up
+    fs::remove_all(fs::path(destination) / ".git");
+
+    return true;
 }
 
 bool ExportManager::exportLocally(const std::string &modelFolder, const std::vector<std::string> &versions)
