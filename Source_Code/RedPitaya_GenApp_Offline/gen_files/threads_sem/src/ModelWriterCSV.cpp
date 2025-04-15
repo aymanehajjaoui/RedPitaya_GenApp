@@ -1,14 +1,11 @@
-/*modelWriter.cpp*/
+/*ModelWriterCSV.cpp*/
 
 #include "ModelWriterCSV.hpp"
-#include "DAC.hpp"
 #include <iostream>
-#include <fstream>
-#include <thread>
-#include <chrono>
+#include <cstdio>
 #include <type_traits>
+#include <mutex>
 
-// Generic output writer for model result
 template <typename T>
 void write_output(FILE *file, int index, const T &value, double time_ms)
 {
@@ -22,7 +19,7 @@ void write_output(FILE *file, int index, const T &value, double time_ms)
     }
     else
     {
-        fprintf(file, "%d,%d,%.6f\n", index, static_cast<int>(value), time_ms); // fallback
+        fprintf(file, "%d,%d,%.6f\n", index, static_cast<int>(value), time_ms);
     }
 }
 
@@ -44,7 +41,7 @@ void log_results_csv(Channel &channel, const std::string &filename)
             if (sem_wait(&channel.result_sem_csv) != 0)
             {
                 if (errno == EINTR && stop_program.load())
-                    break; // interrupted by SIGINT
+                    break;
                 continue;
             }
 
@@ -53,10 +50,10 @@ void log_results_csv(Channel &channel, const std::string &filename)
 
             while (!channel.result_buffer_csv.empty())
             {
-                const model_result_t &result = channel.result_buffer_csv.front();  // peek
+                const model_result_t &result = channel.result_buffer_csv.front();
                 write_output(output_file, output_index++, result.output[0], result.computation_time);
                 fflush(output_file);
-                channel.result_buffer_csv.pop_front();  // remove after processing
+                channel.result_buffer_csv.pop_front();
                 channel.log_count_csv.fetch_add(1, std::memory_order_relaxed);
             }
 

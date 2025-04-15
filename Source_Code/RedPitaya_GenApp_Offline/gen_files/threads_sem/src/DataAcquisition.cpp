@@ -3,14 +3,6 @@
 #include "DataAcquisition.hpp"
 #include "SystemUtils.hpp"
 #include <iostream>
-#include <thread>
-#include <chrono>
-
-#include "DataAcquisition.hpp"
-#include "SystemUtils.hpp"
-#include <iostream>
-#include <thread>
-#include <chrono>
 
 void acquire_data(Channel &channel, rp_channel_t rp_channel)
 {
@@ -136,7 +128,7 @@ void acquire_data(Channel &channel, rp_channel_t rp_channel)
         if (save_data_dac)
             sem_post(&channel.data_sem_dac);
 
-        sem_post(&channel.model_sem); // Wake up model thread if waiting
+        sem_post(&channel.model_sem);
 
         std::cout << "Acquisition thread on channel " << static_cast<int>(channel.channel_id) + 1 << " exiting..." << std::endl;
     }

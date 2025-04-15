@@ -1,10 +1,7 @@
-/* DataWriter.cpp */
+/* DataWriterCSV.cpp */
 
 #include "DataWriterCSV.hpp"
 #include <iostream>
-#include <fstream>
-#include <thread>
-#include <chrono>
 #include <type_traits>
 
 template <typename T>
@@ -45,7 +42,6 @@ void write_data_csv(Channel &channel, const std::string &filename)
                 continue;
             }
 
-            // Process all queued data
             while (!channel.data_queue_csv.empty())
             {
                 std::shared_ptr<data_part_t> part = channel.data_queue_csv.front();
@@ -76,4 +72,3 @@ void write_data_csv(Channel &channel, const std::string &filename)
         std::cerr << "Exception in write_data_csv for channel " << static_cast<int>(channel.channel_id) + 1 << ": " << e.what() << std::endl;
     }
 }
-
