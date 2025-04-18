@@ -3,8 +3,8 @@
 #include "SelectDialog.hpp"
 #include <gtkmm/messagedialog.h>
 
-SelectDialog::SelectDialog(Gtk::Window &parent)
-    : Gtk::Dialog("Select Versions to Export", parent, true),
+SelectDialog::SelectDialog()
+    : Gtk::Dialog("Select Versions to Export"),
       box(Gtk::ORIENTATION_VERTICAL),
       cb_threads_mutex("threads_mutex"),
       cb_threads_sem("threads_sem"),
@@ -12,25 +12,28 @@ SelectDialog::SelectDialog(Gtk::Window &parent)
       cb_process_sem("process_sem"),
       buttonVersionHelp("Need help about which version to choose?")
 {
-    set_default_size(300, 200);
-    Gtk::Box *contentArea = get_content_area();
+    set_resizable(true);
+    set_default_size(400, 250);
+    set_position(Gtk::WIN_POS_CENTER);
+    set_modal(false);        
+    set_deletable(true);     
 
+    Gtk::Box *contentArea = get_content_area();
     box.set_spacing(5);
     box.set_border_width(10);
 
-    
     box.pack_start(cb_threads_mutex, Gtk::PACK_SHRINK);
     box.pack_start(cb_threads_sem, Gtk::PACK_SHRINK);
     box.pack_start(cb_process_mutex, Gtk::PACK_SHRINK);
     box.pack_start(cb_process_sem, Gtk::PACK_SHRINK);
 
-    
     buttonVersionHelp.signal_clicked().connect(sigc::mem_fun(*this, &SelectDialog::onVersionHelp));
     box.pack_start(buttonVersionHelp, Gtk::PACK_SHRINK);
 
     contentArea->pack_start(box);
     add_button("_Cancel", Gtk::RESPONSE_CANCEL);
     add_button("_OK", Gtk::RESPONSE_OK);
+
     show_all_children();
 }
 
@@ -62,4 +65,3 @@ void SelectDialog::onVersionHelp()
         "Choose the version(s) that match your system setup or requirements.");
     helpDialog.run();
 }
-

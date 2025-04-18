@@ -2,14 +2,10 @@
 
 #include "ExportManager.hpp"
 #include "SSHManager.hpp"
-#include <fstream>
-#include <regex>
-#include <sstream>
 #include <cstdlib>
-#include <unordered_map>
+#include <iostream>
 
 namespace fs = std::filesystem;
-
 
 const std::unordered_map<std::string, std::string> ExportManager::versionGitLinks = {
     {"threads_mutex", "https:
@@ -47,74 +43,52 @@ bool ExportManager::cloneVersionFromGit(const std::string &version, const std::s
     if (std::system(command.c_str()) != 0)
         return false;
 
-    
     fs::remove_all(fs::path(destination) / ".git");
-
     return true;
 }
 
-bool ExportManager::exportLocally(const std::string &modelFolder, const std::vector<std::string> &versions)
+bool ExportManager::exportLocally(const std::string &modelFolder,
+                                  const std::string &version,
+                                  const std::string &targetFolder,
+                                  const std::atomic<bool> &cancelExportFlag)
 {
-    Gtk::FileChooserDialog dialog("Choose the target folder", Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
-    dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
-    dialog.add_button("_OK", Gtk::RESPONSE_OK);
-
-    std::string targetFolder;
-    if (dialog.run() == Gtk::RESPONSE_OK)
-    {
-        targetFolder = dialog.get_filename();
-    }
-
-    if (modelFolder.empty() || targetFolder.empty())
-    {
-        Gtk::MessageDialog errorDialog(dialog, "Please select a model and target location.", false, Gtk::MESSAGE_ERROR);
-        errorDialog.run();
-        return false;
-    }
-
     try
     {
-        for (const auto &version : versions)
-        {
-            fs::path versionDstPath = fs::path(targetFolder) / version;
+        if (cancelExportFlag.load())
+            return false;
 
-            
-            if (!cloneVersionFromGit(version, versionDstPath.string()))
-            {
-                Gtk::MessageDialog errorDialog(dialog, "Failed to clone version: " + version, false, Gtk::MESSAGE_ERROR);
-                errorDialog.run();
-                return false;
-            }
+        fs::path versionDstPath = fs::path(targetFolder) / version;
+        if (!cloneVersionFromGit(version, versionDstPath.string()))
+            return false;
 
-            
-            fs::copy(modelFolder, versionDstPath / "model", fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+        if (cancelExportFlag.load())
+            return false;
+        fs::copy(modelFolder, versionDstPath / "model", fs::copy_options::recursive | fs::copy_options::overwrite_existing);
 
-            if (version == "threads_mutex" || version == "threads_sem")
-            {
-                removeStaticFromModelC((versionDstPath / "model").string());
-            }
-        }
+        if ((version == "threads_mutex" || version == "threads_sem") && !cancelExportFlag.load())
+            removeStaticFromModelC((versionDstPath / "model").string());
 
-        Gtk::MessageDialog successDialog(dialog, "Selected versions exported successfully!", false, Gtk::MESSAGE_INFO);
-        successDialog.run();
-        return true;
+        return !cancelExportFlag.load();
     }
     catch (const std::exception &e)
     {
-        Gtk::MessageDialog errorDialog(dialog, std::string("Error: ") + e.what(), false, Gtk::MESSAGE_ERROR);
-        errorDialog.run();
+        std::cerr << "Export locally failed: " << e.what() << std::endl;
         return false;
     }
 }
 
-bool ExportManager::exportToRedPitaya(const std::string &modelFolder, const std::vector<std::string> &versions,
-                                      const std::string &hostname, const std::string &password, const std::string &targetDirectory)
+bool ExportManager::exportSingleVersionToRedPitaya(const std::string &modelFolder,
+                                                   const std::string &version,
+                                                   const std::string &hostname,
+                                                   const std::string &password,
+                                                   const std::string &targetDirectory,
+                                                   const std::atomic<bool> &cancelExportFlag)
 {
-    if (!SSHManager::create_remote_directory(hostname, password, targetDirectory))
-        return false;
-
-    for (const auto &version : versions)
+    try
     {
+        if (cancelExportFlag.load())
+            return false;
+
         std::string remoteVersionDir = targetDirectory + "/" + version;
         if (!SSHManager::create_remote_directory(hostname, password, remoteVersionDir))
             return false;
@@ -127,30 +101,35 @@ bool ExportManager::exportToRedPitaya(const std::string &modelFolder, const std:
         fs::remove_all(tempCodeDir);
         fs::create_directories(tempModelDir);
 
-        
+        if (cancelExportFlag.load())
+            return false;
         fs::copy(modelFolder, tempModelDir, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
 
-        
-        if (version == "threads_mutex" || version == "threads_sem")
-        {
+        if ((version == "threads_mutex" || version == "threads_sem") && !cancelExportFlag.load())
             removeStaticFromModelC(tempModelDir);
-        }
 
-        
         if (!cloneVersionFromGit(version, tempCodeDir))
             return false;
 
-        
+        if (cancelExportFlag.load())
+            return false;
         if (!SSHManager::scp_transfer(hostname, password, tempModelDir, remoteModelDir))
             return false;
 
         for (const auto &file : fs::directory_iterator(tempCodeDir))
         {
+            if (cancelExportFlag.load())
+                return false;
             std::string remoteFilePath = remoteVersionDir + "/" + file.path().filename().string();
             if (!SSHManager::scp_transfer(hostname, password, file.path().string(), remoteFilePath))
                 return false;
         }
-    }
 
-    return true;
+        return !cancelExportFlag.load();
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Export to RedPitaya failed: " << e.what() << std::endl;
+        return false;
+    }
 }
