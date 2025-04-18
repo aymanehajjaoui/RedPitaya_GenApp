@@ -18,13 +18,13 @@ SelectDialog::SelectDialog(Gtk::Window &parent)
     box.set_spacing(5);
     box.set_border_width(10);
 
-    // Pack version options
+    
     box.pack_start(cb_threads_mutex, Gtk::PACK_SHRINK);
     box.pack_start(cb_threads_sem, Gtk::PACK_SHRINK);
     box.pack_start(cb_process_mutex, Gtk::PACK_SHRINK);
     box.pack_start(cb_process_sem, Gtk::PACK_SHRINK);
 
-    // Help button
+    
     buttonVersionHelp.signal_clicked().connect(sigc::mem_fun(*this, &SelectDialog::onVersionHelp));
     box.pack_start(buttonVersionHelp, Gtk::PACK_SHRINK);
 

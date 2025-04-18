@@ -126,7 +126,7 @@ void model_inference_mod(Channel &channel)
                 std::shared_ptr<data_part_t> part = channel.model_queue.front();
                 channel.model_queue.pop();
 
-                sample_norm(part->data); // Normalize before inference
+                sample_norm(part->data); 
 
                 model_result_t result;
                 auto start = std::chrono::high_resolution_clock::now();

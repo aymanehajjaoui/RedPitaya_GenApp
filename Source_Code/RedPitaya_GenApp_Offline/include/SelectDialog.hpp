@@ -11,7 +11,7 @@
 class SelectDialog : public Gtk::Dialog
 {
 public:
-    SelectDialog(Gtk::Window &parent);
+    SelectDialog();
     std::vector<std::string> get_selected_versions() const;
 
 private:

@@ -9,7 +9,7 @@ bool ConnectionManager::connectToRedPitaya(Gtk::Dialog &dialog, Gtk::Button &but
     std::string hostname;
     std::string password = entryPassword.get_text();
 
-    if (entryMac.get_sensitive()) // If MAC is selected
+    if (entryMac.get_sensitive()) 
     {
         std::string macLast6 = entryMac.get_text();
         if (macLast6.length() != 6)
@@ -20,7 +20,7 @@ bool ConnectionManager::connectToRedPitaya(Gtk::Dialog &dialog, Gtk::Button &but
         }
         hostname = "rp-" + macLast6 + ".local";
     }
-    else // If IP is selected
+    else 
     {
         hostname = entryIP.get_text();
         if (hostname.empty())
@@ -69,14 +69,14 @@ bool ConnectionManager::isSSHConnectionAlive(const std::string &hostname, const 
 {
     std::string userHost;
 
-    // If it's a MAC-based hostname (contains "rp-" and ends with .local)
+    
     if (hostname.find("rp-") == 0 && hostname.find(".local") != std::string::npos)
     {
         userHost = "root@" + hostname;
     }
     else
     {
-        userHost = "root@" + hostname; // IP-based or direct hostname
+        userHost = "root@" + hostname; 
     }
 
     std::string cmd = "sshpass -p \"" + password + "\" ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no " + userHost + " 'echo ok' > /dev/null 2>&1";

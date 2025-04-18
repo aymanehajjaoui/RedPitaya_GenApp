@@ -5,7 +5,7 @@
 #include <iostream>
 #include <type_traits>
 
-// Generic output writer for model result
+
 template<typename T>
 void write_output(FILE *file, int index, const T &value, double time_ms) {
     if constexpr (std::is_integral<T>::value) {
@@ -13,7 +13,7 @@ void write_output(FILE *file, int index, const T &value, double time_ms) {
     } else if constexpr (std::is_floating_point<T>::value) {
         fprintf(file, "%d,%.6f,%.6f\n", index, value, time_ms);
     } else {
-        fprintf(file, "%d,%d,%.6f\n", index, static_cast<int>(value), time_ms); // Fallback
+        fprintf(file, "%d,%d,%.6f\n", index, static_cast<int>(value), time_ms); 
     }
 }
 

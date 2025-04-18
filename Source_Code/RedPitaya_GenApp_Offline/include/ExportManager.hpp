@@ -2,22 +2,31 @@
 
 #pragma once
 
-#include <gtkmm.h>
-#include <filesystem>
 #include <string>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <regex>
-
+#include <atomic>
 
 class ExportManager
 {
 public:
-    static void removeStaticFromModelC(const std::string &versionPath);
-    static bool exportLocally(const std::string &modelFolder, const std::string &genFilesDir);
-    static bool exportLocally(const std::string &modelFolder, const std::string &genFilesDir, const std::vector<std::string> &versions);
+    static bool exportLocally(const std::string &modelFolder,
+                              const std::string &genFilesDir,
+                              const std::string &version,
+                              const std::string &targetFolder,
+                              const std::atomic<bool> &cancelExportFlag);
 
-    static bool exportToRedPitaya(const std::string &modelFolder, const std::string &genFilesDir, const std::string &hostname, const std::string &password, const std::string &targetDirectory);
-    static bool exportToRedPitaya(const std::string &modelFolder, const std::string &genFilesDir, const std::vector<std::string> &versions,
-                                  const std::string &hostname, const std::string &password, const std::string &targetDirectory);
+    static bool exportSingleVersionToRedPitaya(const std::string &modelFolder,
+                                               const std::string &genFilesDir,
+                                               const std::string &version,
+                                               const std::string &hostname,
+                                               const std::string &password,
+                                               const std::string &targetDirectory,
+                                               const std::atomic<bool> &cancelExportFlag);
+
+private:
+    static void removeStaticFromModelC(const std::string &versionPath);
 };
+

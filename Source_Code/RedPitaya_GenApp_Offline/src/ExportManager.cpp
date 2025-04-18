@@ -18,7 +18,6 @@ void ExportManager::removeStaticFromModelC(const std::string &versionPath)
 
     std::string content = buffer.str();
 
-    // Remove all 'static' keywords cleanly
     std::regex staticRegex(R"(\bstatic\b\s*)");
     std::string modified = std::regex_replace(content, staticRegex, "");
 
@@ -27,104 +26,102 @@ void ExportManager::removeStaticFromModelC(const std::string &versionPath)
     out.close();
 }
 
-bool ExportManager::exportLocally(const std::string &modelFolder, const std::string &genFilesDir, const std::vector<std::string> &versions)
+bool ExportManager::exportLocally(const std::string &modelFolder,
+                                  const std::string &genFilesDir,
+                                  const std::string &version,
+                                  const std::string &targetFolder,
+                                  const std::atomic<bool> &cancelExportFlag)
 {
-    Gtk::FileChooserDialog dialog("Choose the target folder", Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
-    dialog.add_button("_Cancel", Gtk::RESPONSE_CANCEL);
-    dialog.add_button("_OK", Gtk::RESPONSE_OK);
-
-    std::string targetFolder;
-    if (dialog.run() == Gtk::RESPONSE_OK)
-    {
-        targetFolder = dialog.get_filename();
-    }
-
-    if (modelFolder.empty() || targetFolder.empty())
-    {
-        Gtk::MessageDialog errorDialog(dialog, "Please select a model and target location.", false, Gtk::MESSAGE_ERROR);
-        errorDialog.run();
-        return false;
-    }
-
     try
     {
+        if (cancelExportFlag.load())
+            return false;
+
         if (!fs::exists(targetFolder))
-        {
             fs::create_directories(targetFolder);
-        }
 
-        for (const auto &version : versions)
-        {
-            fs::path versionDstPath = fs::path(targetFolder) / version;
-            fs::path versionSrcPath = fs::path(genFilesDir) / version;
+        fs::path versionDstPath = fs::path(targetFolder) / version;
+        fs::path versionSrcPath = fs::path(genFilesDir) / version;
 
-            fs::create_directories(versionDstPath);
-            fs::copy(versionSrcPath, versionDstPath, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
-            fs::copy(modelFolder, versionDstPath / "model", fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+        if (cancelExportFlag.load())
+            return false;
+        fs::create_directories(versionDstPath);
 
-            if (version == "threads_mutex" || version == "threads_sem")
-            {
-                removeStaticFromModelC((versionDstPath / "model").string());
-            }
-        }
+        fs::copy(versionSrcPath, versionDstPath,
+                 fs::copy_options::recursive | fs::copy_options::overwrite_existing);
 
-        Gtk::MessageDialog successDialog(dialog, "Selected versions exported successfully!", false, Gtk::MESSAGE_INFO);
-        successDialog.run();
-        return true;
+        if (cancelExportFlag.load())
+            return false;
+        fs::copy(modelFolder, versionDstPath / "model",
+                 fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+
+        if ((version == "threads_mutex" || version == "threads_sem") && !cancelExportFlag.load())
+            removeStaticFromModelC((versionDstPath / "model").string());
+
+        return !cancelExportFlag.load();
     }
     catch (const std::exception &e)
     {
-        Gtk::MessageDialog errorDialog(dialog, std::string("Error copying files: ") + e.what(), false, Gtk::MESSAGE_ERROR);
-        errorDialog.run();
+        std::cerr << "Export failed for version " << version << ": " << e.what() << std::endl;
         return false;
     }
 }
 
-bool ExportManager::exportToRedPitaya(const std::string &modelFolder, const std::string &genFilesDir, const std::vector<std::string> &versions,
-                                      const std::string &hostname, const std::string &password, const std::string &targetDirectory)
+bool ExportManager::exportSingleVersionToRedPitaya(const std::string &modelFolder,
+                                                   const std::string &genFilesDir,
+                                                   const std::string &version,
+                                                   const std::string &hostname,
+                                                   const std::string &password,
+                                                   const std::string &targetDirectory,
+                                                   const std::atomic<bool> &cancelExportFlag)
 {
-    if (!SSHManager::create_remote_directory(hostname, password, targetDirectory))
+    if (cancelExportFlag.load())
         return false;
 
-    for (const auto &version : versions)
+    std::string remoteVersionDir = targetDirectory + "/" + version;
+    if (!SSHManager::create_remote_directory(hostname, password, remoteVersionDir))
+        return false;
+
+    std::string remoteModelDir = remoteVersionDir + "/model";
+    std::string tempModelDir = "/tmp/export_temp_model";
+
+    fs::remove_all(tempModelDir);
+    fs::create_directories(tempModelDir);
+
+    if (cancelExportFlag.load())
+        return false;
+    fs::copy(modelFolder, tempModelDir,
+             fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+
+    if ((version == "threads_mutex" || version == "threads_sem") && !cancelExportFlag.load())
+        removeStaticFromModelC(tempModelDir);
+
+    if (cancelExportFlag.load())
+        return false;
+    if (!SSHManager::scp_transfer(hostname, password, tempModelDir, remoteModelDir))
+        return false;
+
+    fs::path src = fs::path(genFilesDir) / version;
+
+    if (fs::is_directory(src))
     {
-        fs::path src = fs::path(genFilesDir) / version;
-        std::string remoteVersionDir = targetDirectory + "/" + version;
-
-        if (!SSHManager::create_remote_directory(hostname, password, remoteVersionDir))
-            return false;
-
-        std::string remoteModelDir = remoteVersionDir + "/model";
-        std::string tempModelDir = "/tmp/export_temp_model";
-
-        // Clean/create temporary copy of model directory
-        fs::remove_all(tempModelDir);
-        fs::create_directories(tempModelDir);
-        fs::copy(modelFolder, tempModelDir, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
-
-        if (version == "threads_mutex" || version == "threads_sem")
+        for (const auto &file : fs::directory_iterator(src))
         {
-            removeStaticFromModelC(tempModelDir);
-        }
+            if (cancelExportFlag.load())
+                return false;
 
-        if (!SSHManager::scp_transfer(hostname, password, tempModelDir, remoteModelDir))
-            return false;
-
-        if (fs::is_directory(src))
-        {
-            for (const auto &file : fs::directory_iterator(src))
-            {
-                std::string remoteFilePath = remoteVersionDir + "/" + file.path().filename().string();
-                if (!SSHManager::scp_transfer(hostname, password, file.path().string(), remoteFilePath))
-                    return false;
-            }
-        }
-        else if (fs::is_regular_file(src))
-        {
-            if (!SSHManager::scp_transfer(hostname, password, src.string(), remoteVersionDir))
+            std::string remoteFilePath = remoteVersionDir + "/" + file.path().filename().string();
+            if (!SSHManager::scp_transfer(hostname, password, file.path().string(), remoteFilePath))
                 return false;
         }
     }
+    else if (fs::is_regular_file(src))
+    {
+        if (cancelExportFlag.load())
+            return false;
+        if (!SSHManager::scp_transfer(hostname, password, src.string(), remoteVersionDir))
+            return false;
+    }
 
-    return true;
+    return !cancelExportFlag.load();
 }

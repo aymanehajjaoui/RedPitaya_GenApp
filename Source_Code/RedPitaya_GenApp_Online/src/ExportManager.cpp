@@ -10,12 +10,12 @@
 
 namespace fs = std::filesystem;
 
-// Map version name to its Git URL
+
 const std::unordered_map<std::string, std::string> ExportManager::versionGitLinks = {
-    {"threads_mutex", "https://github.com/aymanehajjaoui/threads_mutex.git"},
-    {"threads_sem", "https://github.com/aymanehajjaoui/threads_sem.git"},
-    {"process_mutex", "https://github.com/aymanehajjaoui/process_mutex.git"},
-    {"process_sem", "https://github.com/aymanehajjaoui/process_sem.git"}};
+    {"threads_mutex", "https:
+    {"threads_sem", "https:
+    {"process_mutex", "https:
+    {"process_sem", "https:
 
 void ExportManager::removeStaticFromModelC(const std::string &versionPath)
 {
@@ -47,7 +47,7 @@ bool ExportManager::cloneVersionFromGit(const std::string &version, const std::s
     if (std::system(command.c_str()) != 0)
         return false;
 
-    // Remove .git folder to clean up
+    
     fs::remove_all(fs::path(destination) / ".git");
 
     return true;
@@ -78,7 +78,7 @@ bool ExportManager::exportLocally(const std::string &modelFolder, const std::vec
         {
             fs::path versionDstPath = fs::path(targetFolder) / version;
 
-            // Clone repo
+            
             if (!cloneVersionFromGit(version, versionDstPath.string()))
             {
                 Gtk::MessageDialog errorDialog(dialog, "Failed to clone version: " + version, false, Gtk::MESSAGE_ERROR);
@@ -86,7 +86,7 @@ bool ExportManager::exportLocally(const std::string &modelFolder, const std::vec
                 return false;
             }
 
-            // Copy model
+            
             fs::copy(modelFolder, versionDstPath / "model", fs::copy_options::recursive | fs::copy_options::overwrite_existing);
 
             if (version == "threads_mutex" || version == "threads_sem")
@@ -127,20 +127,20 @@ bool ExportManager::exportToRedPitaya(const std::string &modelFolder, const std:
         fs::remove_all(tempCodeDir);
         fs::create_directories(tempModelDir);
 
-        // Copy model
+        
         fs::copy(modelFolder, tempModelDir, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
 
-        // Remove "static" if needed
+        
         if (version == "threads_mutex" || version == "threads_sem")
         {
             removeStaticFromModelC(tempModelDir);
         }
 
-        // Clone the version repo
+        
         if (!cloneVersionFromGit(version, tempCodeDir))
             return false;
 
-        // Transfer model + code
+        
         if (!SSHManager::scp_transfer(hostname, password, tempModelDir, remoteModelDir))
             return false;
 

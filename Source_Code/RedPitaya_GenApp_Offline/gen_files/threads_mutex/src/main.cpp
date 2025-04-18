@@ -74,18 +74,18 @@ int main()
         log_thread_dac1 = std::thread(log_results_dac, std::ref(channel1), RP_CH_1);
     log_thread_dac2 = std::thread(log_results_dac, std::ref(channel2), RP_CH_2);
 
-    // set_thread_priority(acq_thread1, acq_priority);
-    // set_thread_priority(acq_thread2, acq_priority);
-    // set_thread_priority(write_thread_csv1, write_csv_priority);
-    // set_thread_priority(write_thread_cs2, write_csv_priority);
-    // set_thread_priority(write_thread_dac1, write_dac_priority);
-    // set_thread_priority(write_thread_dac2, write_dac_priority);
+    
+    
+    
+    
+    
+    
     set_thread_priority(model_thread1, model_priority);
     set_thread_priority(model_thread2, model_priority);
-    // set_thread_priority(log_thread_csv1, log_csv_priority);
-    // set_thread_priority(log_thread_csv2, log_csv_priority);
-    // set_thread_priority(log_thread_dac1, log_dac_priority);
-    // set_thread_priority(log_thread_dac2, log_dac_priority);
+    
+    
+    
+    
 
     if (acq_thread1.joinable())
         acq_thread1.join();
