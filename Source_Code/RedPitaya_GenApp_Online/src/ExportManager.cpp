@@ -8,10 +8,11 @@
 namespace fs = std::filesystem;
 
 const std::unordered_map<std::string, std::string> ExportManager::versionGitLinks = {
-    {"threads_mutex", "https:
-    {"threads_sem", "https:
-    {"process_mutex", "https:
-    {"process_sem", "https:
+    {"threads_mutex", "https://github.com/aymanehajjaoui/threads_mutex.git"},
+    {"threads_sem", "https://github.com/aymanehajjaoui/threads_sem.git"},
+    {"process_mutex", "https://github.com/aymanehajjaoui/process_mutex.git"},
+    {"process_sem", "https://github.com/aymanehajjaoui/process_sem.git"}
+};
 
 void ExportManager::removeStaticFromModelC(const std::string &versionPath)
 {
