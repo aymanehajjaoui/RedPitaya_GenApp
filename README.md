@@ -1,9 +1,10 @@
 # RedPitaya_GenApp
 
 RedPitaya GenApp is a **GTKmm-based graphical application** designed to **manage, configure, and deploy CNN models** to RedPitaya devices.  
-The app offers **offline and online export modes**, **RSA key management**, and full **SSH-based deployment**, enabling seamless integration of **machine learning models into embedded hardware.**
+The app offers **offline and online export modes**, **RSA key management**, and full **SSH-based deployment**, of **Qualia generated models**.
 
-It is modular, clean, and ready for use in **real-time AI applications** where RedPitaya serves as the main processing hardware.
+The models generated can be ran on RedPitaya in realtime. 
+Recommended version to use for full realtime capabilities: **process_sem**
 
 ---
 
@@ -14,19 +15,19 @@ It is modular, clean, and ready for use in **real-time AI applications** where R
     - Automatically copy public keys to RedPitaya for passwordless SSH access
 
 - 🔄 **Offline & Online Export Modes:**
-    - **Offline:** Deploy using pre-generated files
-    - **Online:** Fetch and deploy models from GIT repositories
+    - **Offline:** Deploy using pre-generated files contained in **gen_files** folder
+    - **Online:** Fetch and deploy models from GIT repositories (links of GIT repos can be found inside the **Source_Code/RedPitaya_GenApp_Online/src/Utility/ExportManager.cpp**
 
 - 🖥️ **GTKmm Graphical Interface:**
     - User-friendly interface with modular button handling
-    - Visual feedback (logs, progress bar, etc.)
+    - Visual feedback (logs, progress bar,messages from dialog box etc.)
 
 - 📤 **Export & Deployment Options:**
     - Browse and select CNN models
     - Export models locally or deploy directly to RedPitaya via SSH
 
 - 📟 **Embedded AI & RT Components:**
-    - Includes CMSIS-NN for fast CNN inference
+    - Includes CMSIS-NN for fast and optimized CNN inference using SIMD
     - Real-time data acquisition and processing modules (ADC, DAC, multi-threading)
 
 ---
@@ -48,7 +49,7 @@ Each version includes:
 
 - `buttonsHandler/` — Modular handlers for UI buttons.
 - `Utility/` — Core utility modules: SSHManager, RSAKeyDialog, ExportManager, etc.
-- `gen_files/` (offline only) — Embedded components for RedPitaya: CMSIS libraries, ADC/DAC code, real-time synchronization handlers (mutex, semaphore, etc.).
+- `gen_files/` (offline only) — Embedded components for RedPitaya: CMSIS libraries, ADC/DAC code, real-time synchronization mechanisms (mutex, semaphore, etc.).
 
 ---
 
@@ -77,11 +78,12 @@ cd Source_Code/RedPitaya_GenApp_Online
 make
 ```
 
-🔧 *Note: You can also clean and rebuild using:*
+🔧 *Note: You don't need to clean and rebuild, you can just use:*
 
 ```bash
-make clean && make
+make
 ```
+It will clean, compile and launsh the app automatically from the build directory
 
 ---
 
@@ -160,6 +162,27 @@ Make sure the following are installed:
 **Tested on:**
 - Ubuntu 22.04+
 - RedPitaya STEMlab (with SSH access)
+
+---
+
+### 📦 Install commands (Ubuntu/Debian)
+
+```bash
+# Install GTKmm 3 and required dev packages
+sudo apt update
+sudo apt install libgtkmm-3.0-dev
+
+# Install libssh
+sudo apt install libssh-dev
+
+# Install build tools
+sudo apt install build-essential
+
+# (Optional) Install git for online export mode
+sudo apt install git
+```
+
+This has been tested on Ubuntu 22.04+.  
 
 ---
 
