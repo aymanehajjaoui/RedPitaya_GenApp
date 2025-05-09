@@ -2,22 +2,20 @@
 
 #pragma once
 
-#include <gtkmm/window.h>
-#include <gtkmm/button.h>
-#include <gtkmm/box.h>
-#include <gtkmm/entry.h>
-#include <gtkmm/label.h>
-#include <gtkmm/messagedialog.h>
-#include <gtkmm/filechooserdialog.h>
-#include <gtkmm/comboboxtext.h>
-#include <gtkmm/radiobutton.h>
-#include <gtkmm/checkbutton.h>
+#include <gtkmm.h>
 #include <iostream>
 #include <filesystem>
 #include <vector>
 #include <atomic>
 #include <thread>
-#include "DetailsPanel.hpp"
+#include <stdexcept>
+#include "buttonsHandler/BrowseModelHandler.hpp"
+#include "buttonsHandler/ExportLocalHandler.hpp"
+#include "buttonsHandler/ConnectRedPitayaHandler.hpp"
+#include "buttonsHandler/ExportToRedPitayaHandler.hpp"
+#include "buttonsHandler/HelpHandler.hpp"
+#include "buttonsHandler/QuitHandler.hpp"
+#include "Utility/DetailsPanel.hpp"
 
 namespace fs = std::filesystem;
 
@@ -37,9 +35,9 @@ private:
     Gtk::CheckButton checkShowDetails;
 
     std::string modelFolder;
-    std::string genFilesDir = std::filesystem::absolute("gen_files").string();
     std::string redpitayaHost;
     std::string redpitayaPassword;
+    std::string redpitayaPrivateKeyPath;
 
     DetailsPanel detailsPanel;
 
@@ -47,22 +45,11 @@ private:
     bool redpitayaConnected = false;
     std::atomic<bool> cancelExportFlag = false;
 
+    std::string genFilesDir = "gen_files";
+
 public:
     Vue();
     virtual ~Vue();
 
-    void onButtonBrowseModel();
-    void onExportLocallyClicked();
-    void onConnectRedPitayaClicked();
-    void handleConnectButton(Gtk::Dialog *dialog,
-                             Gtk::RadioButton *radioMac,
-                             Gtk::Entry *entryMac,
-                             Gtk::Entry *entryIP,
-                             Gtk::Entry *entryPassword);
-    void showErrorDialog(Gtk::Widget *parent, const std::string &title, const std::string &text);
-    void showInfoDialog(Gtk::Widget *parent, const std::string &message);
-    void onExportToRedPitayaClicked();
-    void onHelpClicked();
-    void onQuitClicked();
     void onCheckShowDetailsClicked();
 };
