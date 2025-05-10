@@ -23,9 +23,9 @@ Vue::Vue()
     buttonBrowseModel.signal_clicked().connect([this]()
                                                { BrowseModelHandler::handle(
                                                      this,
+                                                     buttonBrowseModel,
                                                      buttonExportLocally,
                                                      buttonExportToRedPitaya,
-                                                     cancelExportButton,
                                                      detailsPanel,
                                                      modelFolder,
                                                      modelLoaded,
